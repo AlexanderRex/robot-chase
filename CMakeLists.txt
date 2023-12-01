@@ -11,17 +11,25 @@ find_package(rclcpp REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
-
+find_package(tf2_geometry_msgs REQUIRED)
 
 add_executable(robot_chase src/robot_chase.cpp)
-ament_target_dependencies(robot_chase rclcpp std_msgs tf2 tf2_ros)
+ament_target_dependencies(robot_chase 
+  rclcpp 
+  tf2 
+  tf2_ros 
+  geometry_msgs
+  tf2_geometry_msgs
+)
+
+install(TARGETS
+  robot_chase
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-
-  set(ament_cmake_copyright_FOUND TRUE)
-
-  set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 
