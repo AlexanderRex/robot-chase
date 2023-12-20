@@ -8,11 +8,10 @@
 
 class RobotChase : public rclcpp::Node {
 public:
-  RobotChase() : Node("robot_chase") {
+  RobotChase() : Node("robot_chase"), min_stop_distance_(0.4) {
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
-    // Инициализация издателя
     publisher_ =
         this->create_publisher<geometry_msgs::msg::Twist>("rick/cmd_vel", 10);
 
@@ -38,6 +37,16 @@ private:
                   std::pow(transformStamped.transform.translation.y, 2) +
                   std::pow(transformStamped.transform.translation.z, 2));
 
+    if (error_distance <= min_stop_distance_) {
+      geometry_msgs::msg::Twist twist;
+      twist.angular.z = 0.0;
+      twist.linear.x = 0.0;
+      publisher_->publish(twist);
+      RCLCPP_INFO(this->get_logger(),
+                  "Rick is close enough to Morty, stopping.");
+      return;
+    }
+
     tf2::Quaternion q(transformStamped.transform.rotation.x,
                       transformStamped.transform.rotation.y,
                       transformStamped.transform.rotation.z,
@@ -46,14 +55,13 @@ private:
     double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
 
-    double kp_yaw = 1.0; // Пропорциональный коэффициент для угловой скорости
-    double kp_distance =
-        1.0; // Пропорциональный коэффициент для линейной скорости
+    double kp_yaw = 1.0;
+    double kp_distance = 1.0;
 
-    double angular_velocity = kp_yaw * yaw;
-    double linear_velocity = kp_distance * error_distance;
+    double angular_velocity = std::min(kp_yaw * yaw, max_angular_velocity_);
+    double linear_velocity =
+        std::min(kp_distance * error_distance, max_linear_velocity_);
 
-    // Создаем и публикуем Twist сообщение
     geometry_msgs::msg::Twist twist;
     twist.angular.z = angular_velocity;
     twist.linear.x = linear_velocity;
@@ -68,6 +76,10 @@ private:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
+
+  double min_stop_distance_;
+  const double max_linear_velocity_ = 1.0;
+  const double max_angular_velocity_ = 1.0;
 };
 
 int main(int argc, char *argv[]) {
